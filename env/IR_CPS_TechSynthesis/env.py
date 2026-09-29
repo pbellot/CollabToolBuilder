@@ -2683,6 +2683,41 @@ class VoyagerEnvIR_CPS_TechSynthesis(Environment):
         if not self.has_reset_once:
             print("Environment has not been reset yet - resetting now !")
             self.reset()
+        result = self._step_without_export(code)
+        try:
+            self.export_markdown()
+        except Exception as e:  # exporting must never break a test run
+            print(f"Markdown export failed: {e}")
+        return result
+
+    def export_markdown(self, directory: str = "outputs") -> str:
+        """Write the current document (sections with full content, then resources) to
+        outputs/<document id>.md, overwritten at each step, and return its path."""
+        import os
+        os.makedirs(directory, exist_ok=True)
+        path = os.path.join(directory, f"{self.id}.md")
+        lines = [f"# {self.title}", "", f"_{self.context}_" if self.context else "", ""]
+        sections = self.synthesis_manager.get_all_sections()
+        lines.append(f"## Plan ({len(sections)} sections)")
+        lines.append("")
+        for section in sections:
+            lines.append(f"### {section.section_id}. {section.title}")
+            lines.append("")
+            lines.append(str(section.content or ""))
+            lines.append("")
+        resources = self.synthesis_manager.get_all_resources()
+        lines.append(f"## Ressources ({len(resources)})")
+        lines.append("")
+        for resource in resources:
+            document = resource.get("document", {}) if isinstance(resource, dict) else {}
+            name = document.get("name") or "(sans titre)"
+            link = document.get("link") or ""
+            lines.append(f"- [{resource.get('id')}] {name}" + (f" — {link}" if link else ""))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        return path
+
+    def _step_without_export(self, code: str = ""):
         return super().step(
             action_code=code,
             context={
