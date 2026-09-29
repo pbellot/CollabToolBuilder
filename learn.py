@@ -319,7 +319,7 @@ def run_4agents_learning_loop(
             )
         else:
             answer = smart_input(
-                "Do you want to:\n- search for a new task after reseting to empty documents (Y/YES) ?\n- search for a new task based based on the status of documents after applying the task you just validated (N/NO/Enter) ?\n- or just exit the program (E/EXIT) ?",
+                "What do you want to do next?\n- Y / YES: search for a new task starting from EMPTY test documents (everything done so far on them is discarded).\n- N / NO / Enter: search for a new task starting from the CURRENT test documents, after applying the code of the task just completed (the resources, sections, etc. it created are kept).\n- E / EXIT: quit the program.",
                 "orchestrate_agents",
                 message_type="VALIDATION_INFO"
             ).strip().upper()
