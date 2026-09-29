@@ -971,7 +971,7 @@ if __name__ == "__main__":
         ).get_environment()
         envs_tech_synthesis.append(env)
 
-    max_execution_time = 2400
+    max_execution_time = 6*3600  # 6 hours in seconds
     run_4agents_learning_loop(
         default_llm_key="default_llm", # ALTERNATIVES: run_4agents_learning_loop, run_planner
         premium_llm_key="premium_llm",
