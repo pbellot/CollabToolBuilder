@@ -1967,6 +1967,9 @@ class SynthesisManager:
                 ):
                     for key, value in resource["document"]["content"].items():
                         content_info[f"len(content['{key}'])"] = len(str(value))
+                elif resource["document"].get("content"):
+                    # add_or_update_result_in_resources stores content as a string
+                    content_info["len(content)"] = len(str(resource["document"]["content"]))
 
                 # Vérification des autres éléments
                 status_data = [
@@ -2002,8 +2005,7 @@ class SynthesisManager:
                     resources_status.append(dict(zip(keys, status_data)))
 
         if compact_string_format:
-            # if content_info is empty, it means that there is no resource in the document
-            if len(content_info) == 0:
+            if len(resources_status) == 0:
                 return []
             header = "id|metadatas|document_name|document_link_length|" + "|".join(
                 content_info.keys()
