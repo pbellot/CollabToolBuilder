@@ -5852,6 +5852,19 @@ List your annotations below:
                         self.logger.info("Running default tests with bot argument to main function")
                         tests = [(env.id, main_function["name"] + "(bot)") for env in self.envs]
 
+                    # Models sometimes copy the prompt's placeholder name into the tests
+                    # (e.g. "task_function_name(bot)"): call the generated main function instead.
+                    placeholder_names = {"task_function_name"}
+                    normalized_tests = []
+                    for doc_id, test in tests:
+                        test = test.strip()
+                        call_match = re.match(r"([A-Za-z_]\w*)\s*\(", test)
+                        if call_match and call_match.group(1) in placeholder_names \
+                                and call_match.group(1) not in function_defs:
+                            test = main_function["name"] + test[call_match.end(1):]
+                        normalized_tests.append((doc_id, test))
+                    tests = normalized_tests
+
                     for doc_id, test in tests:
                         try:
                             parsed_test = ast.parse(test)
