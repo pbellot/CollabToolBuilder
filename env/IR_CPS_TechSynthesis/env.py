@@ -2531,6 +2531,31 @@ class LLMResponse:
         return self.content  # Any unexpected attribute access returns the content
 
 
+class _TolerantLLM:
+    """Wrapper around the chat model exposed as `llm` to generated code.
+
+    Generated code often calls `llm("some prompt")`. The deprecated LangChain
+    `__call__` only accepts a list of messages, so a plain string raised
+    "'str' object has no attribute 'content'". This wrapper accepts a string,
+    a single message or a list of messages, always returns the AIMessage
+    (so `.content` works), and forwards every other attribute (invoke, ...).
+    """
+
+    def __init__(self, model):
+        self._model = model
+
+    def __call__(self, prompt, *args, **kwargs):
+        from langchain_core.messages import HumanMessage, BaseMessage
+        if isinstance(prompt, str):
+            prompt = [HumanMessage(content=prompt)]
+        elif isinstance(prompt, BaseMessage):
+            prompt = [prompt]
+        return self._model.invoke(prompt, *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._model, name)
+
+
 class VoyagerEnvIR_CPS_TechSynthesis(Environment):
     def __init__(
         self,
@@ -2668,7 +2693,7 @@ class VoyagerEnvIR_CPS_TechSynthesis(Environment):
                 "DocumentStructure": DocumentStructure,
                 "Section": Section,
                 "Document": Document,
-                "llm": VoyagerEnvIR_CPS_TechSynthesis.llm_model,
+                "llm": _TolerantLLM(VoyagerEnvIR_CPS_TechSynthesis.llm_model),
             },
         )
 

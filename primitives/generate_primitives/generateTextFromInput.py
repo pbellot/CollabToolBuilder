@@ -21,8 +21,13 @@ The output should be in JSON format with the following keys (if any of the below
 
 Research Paper Text: {text}"""
 
-    llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=temperature, openai_api_key=openai_api_key)
+    try:  # use the model configured in config.py (e.g. a local Ollama model) when available
+        from config import MODELS_CONFIG_LIST
+        model_name = (MODELS_CONFIG_LIST or {}).get("basic_gpt", "gpt-4o-mini")
+    except Exception:
+        model_name = "gpt-4o-mini"
+    llm = ChatOpenAI(model_name=model_name, temperature=temperature, openai_api_key=openai_api_key, timeout=request_timout)
     prompter = ChatPromptTemplate.from_template(prompt_template)
     message = prompter.format_messages(text=text)
-    generated_text = llm(message)
+    generated_text = llm.invoke(message)
     return generated_text.content
