@@ -34,6 +34,8 @@ response = llm(prompt)
 # print(response)
 
     10) Your only allowed to research on free scientific API (e.g. Arxiv, Semantic Scholar, OpenAlex, Wikipedia...)
+    11) The code runs on Python 3.11: never put a backslash (e.g. '\n') inside the {...} expression part of an f-string. Build the string first (e.g. citations = "\n".join(items)) and then use f"...{citations}".
+    12) Functions listed in "Successful tasks implemented" are already loaded in the execution context: call them directly instead of copying their code.
 
     You should then respond with:
     - Reasoning: how to best implement the task with maximum efficiency
