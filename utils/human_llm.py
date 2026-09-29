@@ -5899,6 +5899,36 @@ List your annotations below:
         )
         return False, self.parsed_code[output_id]
     
+    def _learnt_tasks_code(self, k: int = 50) -> str:
+        """Return the source code of the learnt tools, to be prepended to executed code.
+
+        Entries that cannot be decoded or do not parse are skipped. The generated program is
+        appended afterwards, so it can still redefine a learnt function if needed.
+        """
+        import ast as _ast
+        chunks = []
+        try:
+            entries = HumanLLMConfig().get_learnt_tasks(k=k) or []
+        except Exception as e:
+            self.logger.warning(f"Could not load learnt tasks for execution: {e}")
+            return ""
+        for page_content in entries:
+            try:
+                entry = json.loads(page_content)
+                entry = entry.get("learnt_task", entry) if isinstance(entry, dict) else entry
+                if isinstance(entry, str):
+                    entry = json.loads(entry)
+                code = entry.get("program_code") if isinstance(entry, dict) else None
+                if not code:
+                    continue
+                _ast.parse(code)
+                chunks.append(code)
+            except Exception:
+                continue
+        if not chunks:
+            return ""
+        return "\n# ---- learnt tools (from previous validated tasks) ----\n" + "\n\n".join(chunks) + "\n"
+
     def run_tests_on_code(
         self,
         message,
@@ -5931,6 +5961,9 @@ List your annotations below:
             common_code = f.read() + "\n"
         # Common code part to be executed in all cases
         common_code += "\n".join(primitives) + "\n"
+        # Make previously learnt tools callable by the generated code (they are listed in the
+        # prompt as "Successful tasks implemented" but were never loaded for execution).
+        common_code += self._learnt_tasks_code()
 
         # Run the code & tests in each environment
         max_autofix, decision_lower = None, None
