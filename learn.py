@@ -876,7 +876,9 @@ def prepare_configs(args):
 
     if unique_id is None:
         unique_id = f"{socket.gethostname()}_{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}"
-    if unique_id is not False and config.common_vectordb_config.unique_collection_id is None:
+    # UnifiedVectorDBConfig already sets a default "<hostname>_<date>" id at construction,
+    # so the id from config.py (or the generated one) must always be applied here.
+    if unique_id is not False:
         config.common_vectordb_config.set_unique_collection_id(unique_id)
 
     if 'saved_task' in globals():
