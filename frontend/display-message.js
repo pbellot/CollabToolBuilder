@@ -19,8 +19,8 @@ function displayMessage(data) {
   if (data.message_type === null) {
     title = `${data.agent_name} | ${new Date().toLocaleTimeString()}`;
   }
-  // Initialize content variable
-  let content = "";
+  // Message text, stripped of ANSI color codes and HTML-escaped
+  let content = escapeHtml(String(data.message ?? "").replace(/\u001b\[[\d;]*m/g, ""));
 
   if (
     ("message" in data &&
@@ -304,10 +304,8 @@ function displayMessage(data) {
       $("#message-accordion").append($agentAccordion);
     }
 
-    let editorId = `editor-${Date.now()}`;
-
     let $messageContainer = $(
-      `<h4>${title}</h4><div class="column-container"><div id="${editorId}"></div></div>`
+      `<h4>${title}</h4><div class="column-container"><pre>${content}</pre></div>`
     );
 
     $agentAccordion.children("div").append($messageContainer);
