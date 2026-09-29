@@ -1233,9 +1233,11 @@ class SynthesisManager:
                 for s in self.document.document_content.sections_list
                 if s.section_id != section_id
             ]
-            self.requires_update_plan_embedding()
+            # requires_update_plan_embedding() does not exist: flag the plan embedding for update
+            # like the other section/resource editing methods do.
+            self.plan_embedding_update_required = True
             self.document.add_event(
-                {"action": "remove_section", "section_id": section_id}
+                "observation", {"action": "remove_section", "section_id": section_id}
             )
             return True
         else:
