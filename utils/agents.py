@@ -310,6 +310,42 @@ class CapitalizationAgent:
             for key, value in self.additional_check_list.items():
                 self.human_llm_generate_function_description.add_manage_inference_check(key, value)
 
+    def _remove_previous_learnt_task_versions(self, function_name: str) -> None:
+        """Delete older learnt-task entries with the same main function name.
+
+        Works with both vector store backends (Chroma or Elasticsearch). The
+        cleanup is best effort: a failure is logged and never aborts capitalization.
+        """
+        db = HumanLLMConfig().common_vectordb
+        if db is None:
+            return
+        try:
+            if getattr(db, "elastic_client", None) is not None:
+                index = db.config.collection_name
+                response = db.elastic_client.search(
+                    index=index,
+                    body={"query": {"bool": {"filter": [
+                        {"term": {"metadata.main_function_name.keyword": function_name}},
+                        {"term": {"metadata.data_key.keyword": "learnt_task"}},
+                    ]}}},
+                )
+                for hit in response["hits"]["hits"]:
+                    db.elastic_client.delete(index=index, id=hit["_id"])
+                    self.logger.info(f"Previous learnt task deleted: {hit['_id']}")
+            else:
+                docs = db._query(
+                    query_text=function_name,
+                    k=1000,
+                    metadata_filter={"data_key": "learnt_task", "main_function_name": function_name},
+                )
+                ids = [getattr(d[0] if isinstance(d, tuple) else d, "id", None) for d in docs or []]
+                ids = [i for i in ids if i]
+                if ids:
+                    db.delete(ids=ids)
+                    self.logger.info(f"Previous learnt task versions deleted: {ids}")
+        except Exception as e:
+            self.logger.warning(f"Could not remove previous versions of learnt task {function_name}: {e}")
+
     def capitalize_successful_tasks(self, task_description: str, parsed_code: str) -> None:
         self.logger.info('Starting capitalize_successful_tasks')
         
@@ -329,26 +365,7 @@ class CapitalizationAgent:
             "main_function_name",
             parsed_code.get("main_function", {}).get("name", "unknown")
         )
-        query = {
-            "query": {
-                "term": {
-                    "metadata.main_function_name.keyword": function_name
-                }
-            }
-        }
-        response = self.human_llm_generate_function_description.config.common_vectordb.elastic_client.search(
-            index=HumanLLMConfig().db_learnt_tasks.config.collection_name,
-            body=query
-        )
-
-        if response['hits']['total']['value'] > 0:
-            for hit in response['hits']['hits']:
-                doc_id = hit["_id"]
-                self.human_llm_generate_function_description.config.common_vectordb.elastic_client.delete(
-                    index=HumanLLMConfig().db_learnt_tasks.config.collection_name,
-                    id=doc_id
-                )
-                self.logger.info(f"Document deleted : {doc_id}")
+        self._remove_previous_learnt_task_versions(function_name)
 
         if self.problem_prompts_subdir == "Anomalies/" or self.problem_prompts_subdir == "pipeline_synthesis/":
             pipeline_file_path = os.path.join("pipelines/pipelines", function_name + ".py")
