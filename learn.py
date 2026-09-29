@@ -330,7 +330,8 @@ def run_4agents_learning_loop(
             else:
                 if parsed_code:
                     # Apply the code to the environments without restoring their state
-                    _, _, exec_results, _, _, _ = agent_coding.run_tests_on_code(
+                    # run_tests_on_code is defined on the CodingAgent's HumanLLM, not on the agent itself
+                    run_result = agent_coding.human_llm_code_task.run_tests_on_code(
                         message="",
                         parsed_code=parsed_code,
                         skip_already_processed=False,
@@ -338,6 +339,7 @@ def run_4agents_learning_loop(
                         custom_agent="orchestrate_agents",
                         output_id=0
                     )
+                    exec_results = run_result[2] if run_result else []
                     # Optionally display the execution results for each environment
                     for env, result in zip(test_environments, exec_results):
                         smart_print(
@@ -977,7 +979,7 @@ if __name__ == "__main__":
         premium_llm_key="premium_llm",
         llmORchains_list=llmORchains_list,
         test_environments=envs_tech_synthesis,
-        manual_validation_to_capitalize=False,
+        manual_validation_to_capitalize=True,
         problem_prompts_subdir="IR_CPS_TechSynthesis",  #SWE_Synthesis, IR_CPS_TechSynthesis
         max_coding_attempts=4,
         include_code=False,
