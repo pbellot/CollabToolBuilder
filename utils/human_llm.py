@@ -1485,6 +1485,24 @@ class DynamicConfigManager:
                 key = tgt.split(".", 1)[1]
                 self.config.setdefault("dynamic_llm_defaults", {})[key] = val; applied.append(edit)
         return {"applied": bool(applied), "applied_edits": applied, "stats": stats}
+
+def _extract_python_code(text):
+    """Return only the Python code from an LLM answer.
+
+    Removes <think>...</think> blocks and, when the answer contains Markdown code fences,
+    keeps the content of the first ```python (or first ```) block. Plain code is returned as is.
+    """
+    import re as _re
+    if not isinstance(text, str):
+        return text
+    text = _re.sub(r"<think>.*?</think>", "", text, flags=_re.DOTALL)
+    match = _re.search(r"```(?:python|py)?[ \t]*\n(.*?)(?:\n[ \t]*```|\Z)", text, flags=_re.DOTALL | _re.IGNORECASE)
+    if match:
+        return match.group(1).strip("\n")
+    # Unclosed fence: drop the opening line
+    text = _re.sub(r"^\s*```(?:python|py)?[ \t]*\n", "", text, flags=_re.IGNORECASE)
+    return text.replace("```", "").strip("\n")
+
 class HumanLLM:
     def __init__(
         self,
@@ -6139,6 +6157,9 @@ List your annotations below:
                             ])
                             edited_code = str(getattr(edited_code_returned, 'content', edited_code_returned))
 
+                        # Models often wrap the fixed code in a Markdown fence (or add <think>/prose
+                        # around it) despite the instructions: keep only the Python code.
+                        edited_code = _extract_python_code(edited_code)
                         # Before updating parsed_code, save the previous code
                         prev_code = parsed_code["program_code"]
                         # Run the edited code
